@@ -50,8 +50,15 @@ contains none of Google's assets and installs as-is:
 adb install -r UtilityWFF-4.0-device-font.apk
 ```
 
-To get the original's clock fonts, build from source after extracting them —
-see below.
+It is built with `--no-google-assets`, which forces the device font and this
+project's own preview:
+
+```bash
+python3 gen_wff.py --no-google-assets && ./build_wff.sh
+```
+
+To get the original's clock fonts instead, build from source after extracting
+them — see below.
 
 ## Build
 

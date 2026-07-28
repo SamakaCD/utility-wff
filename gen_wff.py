@@ -96,7 +96,11 @@ HAVE_FONTS = all(os.path.exists(os.path.join(FONT_DIR, f + ".ttf"))
 # Pixel Watch faces APK to place them in fonts/. Without them the watch face
 # falls back to the device font, which on a Pixel Watch is Google Sans anyway --
 # only the pinned weights and the digits-only clock instance are lost.
-if not HAVE_FONTS or "--sysfont" in __import__("sys").argv:
+# --no-google-assets builds the variant published in Releases: the device font
+# and this project's own preview, so the APK carries nothing of Google's.
+NO_GOOGLE_ASSETS = "--no-google-assets" in __import__("sys").argv
+
+if not HAVE_FONTS or NO_GOOGLE_ASSETS or "--sysfont" in __import__("sys").argv:
     TIME_FONT = TIME_FONT_BOLD = TEXT_FONT = "SYNC_TO_DEVICE"
     TIME_WEIGHTS = {"SYNC_TO_DEVICE": "NORMAL"}
 
@@ -641,7 +645,9 @@ def main():
     # the repository, so a fresh clone still gets a real preview.
     root = os.path.dirname(OUT)
     dst_preview = os.path.join(OUT, "res/drawable-nodpi/preview.png")
-    for candidate in ("preview_utility.png", "assets/preview.png"):
+    candidates = ("assets/preview.png",) if NO_GOOGLE_ASSETS else (
+        "preview_utility.png", "assets/preview.png")
+    for candidate in candidates:
         src = os.path.join(root, candidate)
         if os.path.exists(src):
             shutil.copy(src, dst_preview)
