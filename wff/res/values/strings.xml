@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="watch_face_name">Utility</string>
+  <string name="accent_label">Colour</string>
+  <string name="bold_time_label">Bold Time</string>
+  <string name="complication_left">Left</string>
+  <string name="complication_center">Centre</string>
+  <string name="complication_right">Right</string>
+  <string name="complication_bottom">Bottom</string>
+  <string name="color_a02">Graphite</string>
+  <string name="color_a03">Cloud</string>
+  <string name="color_a04">Almond</string>
+  <string name="color_a05">Watermelon</string>
+  <string name="color_a23">Coral</string>
+  <string name="color_a06">Pomelo</string>
+  <string name="color_a36">Guava</string>
+  <string name="color_a24">Peach</string>
+  <string name="color_a07">Champagne</string>
+  <string name="color_a25">Chai</string>
+  <string name="color_a26">Sand</string>
+  <string name="color_a27">Honey</string>
+  <string name="color_a28">Melon</string>
+  <string name="color_a08">Wheat</string>
+  <string name="color_a29">Dandelion</string>
+  <string name="color_a09">Limoncello</string>
+  <string name="color_a37">Lemongrass</string>
+  <string name="color_a10">Lime</string>
+  <string name="color_a11">Pear</string>
+  <string name="color_a16">Spearmint</string>
+  <string name="color_a31">Fern</string>
+  <string name="color_a15">Forest</string>
+  <string name="color_a12">Mint</string>
+  <string name="color_a13">Jade</string>
+  <string name="color_a14">Sage</string>
+  <string name="color_a32">Stream</string>
+  <string name="color_a33">Aqua</string>
+  <string name="color_a17">Sky</string>
+  <string name="color_a18">Ocean</string>
+  <string name="color_a19">Sapphire</string>
+  <string name="color_a20">Amethyst</string>
+  <string name="color_a34">Lilac</string>
+  <string name="color_a35">Lavender</string>
+  <string name="color_a21">Flamingo</string>
+  <string name="color_a22">Bubble Gum</string>
+</resources>
