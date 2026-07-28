@@ -9,9 +9,11 @@ from the original), **Bold Time** and all four slots are editable on the watch.
 
 The bottom row is the `LONG_TEXT` slot, here showing the next calendar event.
 
-Google dropped this face in version 4.x of its Pixel Watch faces package, along
-with every `LONG_TEXT` complication slot in that package, so none of the faces it
-ships can show a next calendar event. Third-party faces still can — [Digital
+If you moved to a Pixel Watch 4 and found Utility missing, this is why: Google
+dropped the face in version 4.x of its Pixel Watch faces package, along with every
+`LONG_TEXT` complication slot in that package, so none of the faces it ships can
+show a next calendar event. Utility Bold is the closest one left and it has no
+event row. Third-party faces still can — [Digital
 Informer][di] does, in the same Watch Face Format — just not in Utility's layout,
 which is the point of this rebuild. Sideloading the 3.x APK does not work either:
 WearServices checks a legacy watch face's signing key against an allowlist, and a
