@@ -5,7 +5,9 @@ for Wear OS 5 and newer. Date row, clock, three round complication slots, and a
 `LONG_TEXT` row that defaults to the next calendar event. Colour (35 colourways
 from the original), **Bold Time** and all four slots are editable on the watch.
 
-![Utility rendered on a Wear OS 7 watch](assets/preview.png)
+![Utility on a Pixel Watch 4](assets/screenshot.jpg)
+
+The bottom row is the `LONG_TEXT` slot, here showing the next calendar event.
 
 Google dropped this face in version 4.x of its Pixel Watch faces package, along
 with every `LONG_TEXT` complication slot in that package, so none of the faces it
