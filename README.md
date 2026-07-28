@@ -9,9 +9,9 @@ from the original), **Bold Time** and all four slots are editable on the watch.
 
 Google dropped this face in version 4.x of its Pixel Watch faces package, along
 with every `LONG_TEXT` complication slot in that package, so none of the faces it
-ships can show a next calendar event. Other stock faces still can — *Digital
-Informer* is reported to — just not in Utility's layout, which is the point of
-this rebuild. Sideloading the 3.x APK does not work either:
+ships can show a next calendar event. Third-party faces still can — [Digital
+Informer][di] does, in the same Watch Face Format — just not in Utility's layout,
+which is the point of this rebuild. Sideloading the 3.x APK does not work either:
 WearServices checks a legacy watch face's signing key against an allowlist, and a
 resigned copy can never pass. That check only applies to faces identified by a
 service class name, and Watch Face Format faces have none, hence this rebuild.
@@ -66,3 +66,4 @@ MIT ([LICENSE](LICENSE)). Layout, colourway names and proportions are derived
 from Google's Utility watch face; not affiliated with or endorsed by Google.
 
 [wff]: https://developer.android.com/training/wearables/wff
+[di]: https://play.google.com/store/apps/details?id=com.amoledwatchfaces.digitalinformer
