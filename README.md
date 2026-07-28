@@ -8,8 +8,10 @@ from the original), **Bold Time** and all four slots are editable on the watch.
 ![Utility rendered on a Wear OS 7 watch](assets/preview.png)
 
 Google dropped this face in version 4.x of its Pixel Watch faces package, along
-with every `LONG_TEXT` complication slot in it — so nothing there can host a next
-calendar event any more. Sideloading the 3.x APK does not work either:
+with every `LONG_TEXT` complication slot in that package, so none of the faces it
+ships can show a next calendar event. Other stock faces still can — *Digital
+Informer* is reported to — just not in Utility's layout, which is the point of
+this rebuild. Sideloading the 3.x APK does not work either:
 WearServices checks a legacy watch face's signing key against an allowlist, and a
 resigned copy can never pass. That check only applies to faces identified by a
 service class name, and Watch Face Format faces have none, hence this rebuild.
