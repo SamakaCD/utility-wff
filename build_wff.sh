@@ -34,8 +34,8 @@ mkdir -p "$OUT"
   --auto-add-overlay \
   --min-sdk-version 33 \
   --target-sdk-version 34 \
-  --version-code "${VERSION_CODE:-30008334}" \
-  --version-name "${VERSION_NAME:-5.0-wff}"
+  --version-code "${VERSION_CODE:-30008335}" \
+  --version-name "${VERSION_NAME:-5.1-wff}"
 
 "$BT/zipalign" -p -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 

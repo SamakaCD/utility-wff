@@ -51,7 +51,12 @@ COLORWAYS = [
     ("a26", "#c4b575", "Sand"), ("a27", "#f8c67c", "Honey"),
     ("a28", "#ffd88a", "Melon"), ("a08", "#ffe9b9", "Wheat"),
     ("a29", "#fffa86", "Dandelion"), ("a09", "#fcffb6", "Limoncello"),
-    ("a37", "#ebffc3", "Lemongrass"), ("a10", "#e6ff7b", "Lime"),
+    ("a37", "#ebffc3", "Lemongrass"),
+    # Not from the original palette; placed by hue rather than appended. Note
+    # that ColorOption ids are list indices, so anything inserted here shifts
+    # the ids of every colour after it and moves an existing selection by one.
+    ("ivy", "#dbecb4", "Ivy"),
+    ("a10", "#e6ff7b", "Lime"),
     ("a11", "#c7ff81", "Pear"), ("a16", "#9ff7ad", "Spearmint"),
     ("a31", "#5dd996", "Fern"), ("a15", "#759a8c", "Forest"),
     ("a12", "#abffdf", "Mint"), ("a13", "#beecdb", "Jade"),
@@ -61,11 +66,6 @@ COLORWAYS = [
     ("a20", "#aeb4ff", "Amethyst"), ("a34", "#d6c3ff", "Lilac"),
     ("a35", "#e4b0fd", "Lavender"), ("a21", "#fabbff", "Flamingo"),
     ("a22", "#ffcaed", "Bubble Gum"),
-    # Not from the original palette. Appended, not slotted in next to Lemongrass
-    # where its hue belongs: ColorOption ids are list indices, so inserting into
-    # the middle renumbers the options after it and moves the colour anyone
-    # already has selected.
-    ("ivy", "#dbecb4", "Ivy"),
 ]
 DEFAULT_COLORWAY = [c[0] for c in COLORWAYS].index("a22")
 

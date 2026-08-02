@@ -24,6 +24,7 @@
   <string name="color_a29">Dandelion</string>
   <string name="color_a09">Limoncello</string>
   <string name="color_a37">Lemongrass</string>
+  <string name="color_ivy">Ivy</string>
   <string name="color_a10">Lime</string>
   <string name="color_a11">Pear</string>
   <string name="color_a16">Spearmint</string>
@@ -42,5 +43,4 @@
   <string name="color_a35">Lavender</string>
   <string name="color_a21">Flamingo</string>
   <string name="color_a22">Bubble Gum</string>
-  <string name="color_ivy">Ivy</string>
 </resources>
