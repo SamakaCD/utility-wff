@@ -2,8 +2,8 @@
 
 A rebuild of the Pixel Watch **Utility** watch face in [Watch Face Format][wff],
 for Wear OS 5 and newer. Date row, clock, three round complication slots, and a
-`LONG_TEXT` row that defaults to the next calendar event. Colour (35 colourways
-from the original), **Bold Time** and all four slots are editable on the watch.
+`LONG_TEXT` row that defaults to the next calendar event. Colour (the original's 35
+colourways plus Ivy), **Bold Time** and all four slots are editable on the watch.
 
 ![Utility on a Pixel Watch 4](assets/screenshot.jpg)
 

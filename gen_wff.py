@@ -61,6 +61,11 @@ COLORWAYS = [
     ("a20", "#aeb4ff", "Amethyst"), ("a34", "#d6c3ff", "Lilac"),
     ("a35", "#e4b0fd", "Lavender"), ("a21", "#fabbff", "Flamingo"),
     ("a22", "#ffcaed", "Bubble Gum"),
+    # Not from the original palette. Appended, not slotted in next to Lemongrass
+    # where its hue belongs: ColorOption ids are list indices, so inserting into
+    # the middle renumbers the options after it and moves the colour anyone
+    # already has selected.
+    ("ivy", "#dbecb4", "Ivy"),
 ]
 DEFAULT_COLORWAY = [c[0] for c in COLORWAYS].index("a22")
 
