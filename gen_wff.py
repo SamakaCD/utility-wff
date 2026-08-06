@@ -1,10 +1,27 @@
 #!/usr/bin/env python3
 """Generate the Watch Face Format sources for a rebuild of the Pixel Watch
-'Utility' (numerique) watch face, Modular II layout.
+'Utility' (numerique) watch face.
 
-Geometry is taken from the decompiled res/xml/watch_face_numerique.xml, whose
-complication bounds live in a 192x192 space (complicationScaleX/Y="192.0").
-WFF uses a 450x450 canvas, so every coordinate is scaled by 450/192.
+Two layouts are offered on the watch, picked via a ListConfiguration:
+  - "Modular": Modular II from the original -- date row, clock, three round
+    complication slots, and the LONG_TEXT row.
+  - "Focus": not from the original. Same date row and LONG_TEXT row, but the
+    three round slots are hidden and the clock is bigger, filling the space
+    that frees up.
+
+Modular's geometry is taken from the decompiled res/xml/watch_face_numerique.xml,
+whose complication bounds live in a 192x192 space (complicationScaleX/Y="192.0").
+WFF uses a 450x450 canvas, so every coordinate is scaled by 450/192. Focus has no
+original to measure against, so its geometry is proportioned relative to
+Modular's and checked visually instead.
+
+ComplicationSlot elements do NOT work nested inside a ListOption/BooleanOption --
+verified on device, the runtime never even attempts to bind a provider to one
+(zero WearComplicationProvider log lines, versus dozens for the same slots
+declared unconditionally). So every ComplicationSlot here stays a direct, always
+-present child of Scene with fixed bounds; Focus hides the three round slots by
+gating what each Complication draws with a Condition on [CONFIGURATION.layout],
+not by varying which slots exist. See NOTES.md.
 """
 import os
 import shutil
@@ -40,6 +57,17 @@ DATE_Y, DATE_H, DATE_SIZE = 32, 26, 21
 TIME_Y, TIME_H, TIME_SIZE = 60, 104, 100
 
 RING = 10  # measured off the original: stroke is 0.098 of the bulb diameter
+
+# --- Focus layout geometry -----------------------------------------------------
+# The LONG_TEXT slot's bounds can't vary by layout (ComplicationSlot bounds are
+# fixed, see the module docstring), so it stays at LT_Y=290 in both layouts.
+# The clock is centred in the space between the date row and that fixed point,
+# rather than measured -- this layout has no original to check against.
+LAYOUT_MODULAR = '[CONFIGURATION.layout] == "modular"'
+_focus_span = LT_Y - (DATE_Y + DATE_H)  # from below the date row to the LONG_TEXT top
+FOCUS_TIME_H = 170
+FOCUS_TIME_Y = (DATE_Y + DATE_H) + round((_focus_span - FOCUS_TIME_H) / 2)
+FOCUS_TIME_SIZE = round(TIME_SIZE * FOCUS_TIME_H / TIME_H)
 
 # --- colourways, in the exact order and naming of res/xml/four_colorway.xml --
 COLORWAYS = [
@@ -201,6 +229,24 @@ def indent(block, spaces):
     return "\n".join(pad + line for line in block.splitlines())
 
 
+def only_if(expr, block):
+    """Draw block only when expr evaluates true.
+
+    Kept to a single Condition level everywhere it's used -- nesting a
+    Condition inside another Condition's Compare is untested, so callers that
+    need to combine two checks (e.g. a layout gate and a data-presence check)
+    AND them into one expression rather than wrapping one Condition in another.
+    """
+    return f"""<Condition>
+  <Expressions>
+    <Expression name="cond"><![CDATA[{expr}]]></Expression>
+  </Expressions>
+  <Compare expression="cond">
+{indent(block, 4)}
+  </Compare>
+</Condition>"""
+
+
 def only_if_present(expr, block):
     """Draw block only when expr has data.
 
@@ -208,14 +254,7 @@ def only_if_present(expr, block):
     layer, so an unguarded PartImage whose resource is absent makes
     DWF:ResourceManager log 'Path is empty or null' on every frame.
     """
-    return f"""<Condition>
-  <Expressions>
-    <Expression name="present"><![CDATA[{expr} != null]]></Expression>
-  </Expressions>
-  <Compare expression="present">
-{indent(block, 4)}
-  </Compare>
-</Condition>"""
+    return only_if(f"{expr} != null", block)
 
 
 # --- bulb slot ---------------------------------------------------------------
@@ -297,62 +336,78 @@ ICON = 21
 VALUE_SIZE = 25
 
 
-def bulb_content():
-    """Value text with the icon below it when the data source supplies one."""
+EMPTY_PLACEHOLDER = '<Group x="0" y="0" width="1" height="1"/>'
+
+
+def bulb_content(gate):
+    """Value text with the icon below it when the data source supplies one --
+    or nothing at all when `gate` doesn't hold (Focus hides the bulb row this
+    way; see the module docstring for why the slot itself can't just vanish).
+
+    hasIcon ANDs the gate in rather than nesting a second Condition around
+    this one's existing Compare/Default, since that nesting is untested.
+    """
     with_icon = text_part(TX, 33, TW, 30, VALUE_SIZE, "[COMPLICATION.TEXT]") + "\n" + icon(
         round((B - ICON) / 2), 70, ICON, ICON, "[COMPLICATION.MONOCHROMATIC_IMAGE]"
     )
     return f"""<Condition>
   <Expressions>
-    <Expression name="hasIcon"><![CDATA[[COMPLICATION.MONOCHROMATIC_IMAGE] != null]]></Expression>
+    <Expression name="hasIcon"><![CDATA[({gate}) && ([COMPLICATION.MONOCHROMATIC_IMAGE] != null)]]></Expression>
+    <Expression name="visible"><![CDATA[{gate}]]></Expression>
   </Expressions>
   <Compare expression="hasIcon">
 {indent(with_icon, 4)}
   </Compare>
-  <Default>
+  <Compare expression="visible">
 {indent(text_part(TX, 36, TW, 30, VALUE_SIZE, "[COMPLICATION.TEXT]"), 4)}
+  </Compare>
+  <Default>
+    {EMPTY_PLACEHOLDER}
   </Default>
 </Condition>"""
 
 
-def bulb_slot(slot_id, x, name, policy):
+def bulb_slot(slot_id, x, name, policy, gate=LAYOUT_MODULAR):
+    """A bulb complication slot.
+
+    Always declared (see the module docstring for why), but everything it
+    draws is gated on `gate` so Focus can hide the whole row without the slot
+    itself ceasing to exist.
+    """
     types = ("RANGED_VALUE GOAL_PROGRESS SHORT_TEXT "
              "MONOCHROMATIC_IMAGE SMALL_IMAGE EMPTY")
     plate = ambient(f'<PartDraw x="0" y="0" width="{B}" height="{B}">'
                     f'<Ellipse x="0" y="0" width="{B}" height="{B}">'
                     f'<Fill color="{PLATE}"/></Ellipse></PartDraw>', AMBIENT_ALPHA)
+    content = bulb_content(gate)
     body = "\n".join([
         f'<Complication type="RANGED_VALUE">',
-        indent(bulb_gauge("[COMPLICATION.RANGED_VALUE_VALUE]",
-                          "[COMPLICATION.RANGED_VALUE_MIN]",
-                          "[COMPLICATION.RANGED_VALUE_MAX]"), 2),
-        indent(bulb_content(), 2),
+        indent(only_if(gate, bulb_gauge("[COMPLICATION.RANGED_VALUE_VALUE]",
+                                        "[COMPLICATION.RANGED_VALUE_MIN]",
+                                        "[COMPLICATION.RANGED_VALUE_MAX]")), 2),
+        indent(content, 2),
         "</Complication>",
         f'<Complication type="GOAL_PROGRESS">',
-        indent(bulb_progress("[COMPLICATION.GOAL_PROGRESS_VALUE]", "0",
-                             "[COMPLICATION.GOAL_PROGRESS_TARGET_VALUE]"), 2),
-        indent(bulb_content(), 2),
+        indent(only_if(gate, bulb_progress("[COMPLICATION.GOAL_PROGRESS_VALUE]", "0",
+                                           "[COMPLICATION.GOAL_PROGRESS_TARGET_VALUE]")), 2),
+        indent(content, 2),
         "</Complication>",
         f'<Complication type="SHORT_TEXT">',
-        indent(bulb_ring(), 2),
-        indent(bulb_content(), 2),
+        indent(only_if(gate, bulb_ring()), 2),
+        indent(content, 2),
         "</Complication>",
         f'<Complication type="MONOCHROMATIC_IMAGE">',
-        indent(plate, 2),
-        indent(only_if_present(
-            "[COMPLICATION.MONOCHROMATIC_IMAGE]",
-            icon(round((B - 41) / 2), round((B - 41) / 2), 41, 41,
-                 "[COMPLICATION.MONOCHROMATIC_IMAGE]")), 2),
+        indent(only_if(f'({gate}) && ([COMPLICATION.MONOCHROMATIC_IMAGE] != null)',
+                       plate + "\n" + icon(round((B - 41) / 2), round((B - 41) / 2), 41, 41,
+                                          "[COMPLICATION.MONOCHROMATIC_IMAGE]")), 2),
         "</Complication>",
         f'<Complication type="SMALL_IMAGE">',
-        indent(plate, 2),
-        indent(only_if_present(
-            "[COMPLICATION.SMALL_IMAGE]",
-            image_part(round((B - 61) / 2), round((B - 61) / 2), 61, 61,
-                       "[COMPLICATION.SMALL_IMAGE]")), 2),
+        indent(only_if(f'({gate}) && ([COMPLICATION.SMALL_IMAGE] != null)',
+                       plate + "\n" + image_part(round((B - 61) / 2), round((B - 61) / 2), 61, 61,
+                                                 "[COMPLICATION.SMALL_IMAGE]")), 2),
         "</Complication>",
         f'<Complication type="EMPTY">',
-        indent(bulb_ring(track_only=True), 2),
+        indent(only_if(gate, bulb_ring(track_only=True)), 2),
         "</Complication>",
     ])
     return f"""<ComplicationSlot slotId="{slot_id}" x="{x}" y="{BULB_Y}" width="{B}" height="{B}" displayName="{name}" supportedTypes="{types}">
@@ -380,16 +435,18 @@ BATTERY_POLICY = ('<DefaultProviderPolicy defaultSystemProvider="WATCH_BATTERY"'
 
 
 # --- long text slot ----------------------------------------------------------
+# Modular's fixed numbers. Icon/padding/line-height are tied to font_size below
+# rather than to the box height, matching the original's proportions where a
+# bigger box (Focus) means bigger text, not just more empty space around it.
 LT_ICON = 32
 LT_PAD = 14
-LT_TEXT_X = LT_PAD + LT_ICON + 8
+LT_GAP = 8
 LT_LINE_H = 32
 LT_SIZE = 24
-LT_TOP = round(LT_H / 2 - LT_LINE_H)  # two stacked lines, centred
 
 
-def long_text_slot(slot_id, diagnostic=False):
-    """The bottom row.
+def long_text_slot(slot_id, x, y, w, h, font_size, diagnostic=False):
+    """The bottom row: LONG_TEXT, defaulting to the next calendar event.
 
     `diagnostic` swaps the slot over to SHORT_TEXT/STEP_COUNT, which is the only
     data source on the Wear emulator that supplies a title, a text and an icon
@@ -398,19 +455,27 @@ def long_text_slot(slot_id, diagnostic=False):
     """
     ctype = "SHORT_TEXT" if diagnostic else "LONG_TEXT"
     provider = "STEP_COUNT" if diagnostic else "NEXT_EVENT"
-    lt_icon = icon(LT_PAD - 8, round((LT_H - LT_ICON) / 2), LT_ICON, LT_ICON,
-                   "[COMPLICATION.MONOCHROMATIC_IMAGE]")
-    wide = LT_W - LT_PAD * 2
-    narrow = LT_W - LT_TEXT_X - LT_PAD
+    ratio = font_size / LT_SIZE
+    icon_size = round(LT_ICON * ratio)
+    pad = round(LT_PAD * ratio)
+    gap = round(LT_GAP * ratio)
+    line_h = round(LT_LINE_H * ratio)
+    text_x = pad + icon_size + gap
+    top = round(h / 2 - line_h)  # two stacked lines, centred
 
-    def two_lines(x, w):
-        return (text_part(x, LT_TOP, w, LT_LINE_H, LT_SIZE, "[COMPLICATION.TITLE]",
+    lt_icon = icon(pad - round(8 * ratio), round((h - icon_size) / 2), icon_size, icon_size,
+                   "[COMPLICATION.MONOCHROMATIC_IMAGE]")
+    wide = w - pad * 2
+    narrow = w - text_x - pad
+
+    def two_lines(tx, tw):
+        return (text_part(tx, top, tw, line_h, font_size, "[COMPLICATION.TITLE]",
                           align="START") + "\n" +
-                text_part(x, LT_TOP + LT_LINE_H, w, LT_LINE_H, LT_SIZE,
+                text_part(tx, top + line_h, tw, line_h, font_size,
                           "[COMPLICATION.TEXT]", align="START"))
 
-    def one_line(x, w):
-        return text_part(x, round((LT_H - LT_LINE_H) / 2), w, LT_LINE_H, LT_SIZE,
+    def one_line(tx, tw):
+        return text_part(tx, round((h - line_h) / 2), tw, line_h, font_size,
                          "[COMPLICATION.TEXT]", align="START")
 
     body = f"""<Condition>
@@ -420,26 +485,26 @@ def long_text_slot(slot_id, diagnostic=False):
     <Expression name="titleOnly"><![CDATA[[COMPLICATION.TITLE] != null]]></Expression>
   </Expressions>
   <Compare expression="iconAndTitle">
-{indent(two_lines(LT_TEXT_X, narrow), 4)}
+{indent(two_lines(text_x, narrow), 4)}
 {indent(lt_icon, 4)}
   </Compare>
   <Compare expression="iconOnly">
-{indent(one_line(LT_TEXT_X, narrow), 4)}
+{indent(one_line(text_x, narrow), 4)}
 {indent(lt_icon, 4)}
   </Compare>
   <Compare expression="titleOnly">
-{indent(two_lines(LT_PAD, wide), 4)}
+{indent(two_lines(pad, wide), 4)}
   </Compare>
   <Default>
-{indent(one_line(LT_PAD, wide), 4)}
+{indent(one_line(pad, wide), 4)}
   </Default>
 </Condition>"""
-    empty = (f'<PartDraw x="0" y="0" width="{LT_W}" height="{LT_H}">'
-             f'<RoundRectangle x="2" y="2" width="{LT_W - 4}" height="{LT_H - 4}"'
+    empty = (f'<PartDraw x="0" y="0" width="{w}" height="{h}">'
+             f'<RoundRectangle x="2" y="2" width="{w - 4}" height="{h - 4}"'
              f' cornerRadiusX="24" cornerRadiusY="24">'
              f'<Stroke thickness="2" color="{PLATE}"/></RoundRectangle></PartDraw>')
-    return f"""<ComplicationSlot slotId="{slot_id}" x="{LT_X}" y="{LT_Y}" width="{LT_W}" height="{LT_H}" displayName="complication_bottom" supportedTypes="{ctype} EMPTY">
-  <BoundingRoundBox x="0" y="0" width="{LT_W}" height="{LT_H}" outlinePadding="2.0" cornerRadius="24"/>
+    return f"""<ComplicationSlot slotId="{slot_id}" x="{x}" y="{y}" width="{w}" height="{h}" displayName="complication_bottom" supportedTypes="{ctype} EMPTY">
+  <BoundingRoundBox x="0" y="0" width="{w}" height="{h}" outlinePadding="2.0" cornerRadius="24"/>
   <DefaultProviderPolicy defaultSystemProvider="{provider}" defaultSystemProviderType="{ctype}"/>
   <Complication type="{ctype}">
 {indent(body, 4)}
@@ -472,16 +537,16 @@ def date_row():
 </PartText>"""
 
 
-def clock(font):
+def clock(font, y, h, size):
     """The clock, dimmed in always-on but keeping its configured weight."""
-    text = ambient(f"""<TimeText format="h:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER" x="0" y="0" width="{CANVAS}" height="{TIME_H}">
-  <Font family="{font}" size="{TIME_SIZE}" weight="{TIME_WEIGHTS[font]}" width="NORMAL" color="{ACCENT}"/>
+    text = ambient(f"""<TimeText format="h:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER" x="0" y="0" width="{CANVAS}" height="{h}">
+  <Font family="{font}" size="{size}" weight="{TIME_WEIGHTS[font]}" width="NORMAL" color="{ACCENT}"/>
 </TimeText>""", AMBIENT_ALPHA)
-    return (f'<DigitalClock x="0" y="{TIME_Y}" width="{CANVAS}" height="{TIME_H}">\n'
+    return (f'<DigitalClock x="0" y="{y}" width="{CANVAS}" height="{h}">\n'
             + indent(text, 2) + '\n</DigitalClock>')
 
 
-def bold_time_switch():
+def bold_time_switch(y, h, size):
     """The original's BOLDTIME setting: the same clock in two pinned weights.
 
     A BooleanConfiguration wraps scene content directly, which is what lets a
@@ -489,13 +554,12 @@ def bold_time_switch():
     """
     return f"""<BooleanConfiguration id="boldTime">
   <BooleanOption id="TRUE">
-{indent(clock(TIME_FONT_BOLD), 4)}
+{indent(clock(TIME_FONT_BOLD, y, h, size), 4)}
   </BooleanOption>
   <BooleanOption id="FALSE">
-{indent(clock(TIME_FONT), 4)}
+{indent(clock(TIME_FONT, y, h, size), 4)}
   </BooleanOption>
 </BooleanConfiguration>"""
-    return switch
 
 
 CYR = "Зустріч 14:30"
@@ -518,20 +582,43 @@ def cyrillic_probe():
             + "</Group>")
 
 
+def layout_switch():
+    """The ListConfiguration users pick a layout from.
+
+    Only the clock (and its BOLDTIME switch) is branched here: ComplicationSlot
+    can't be nested inside a ListOption (see the module docstring), so all four
+    slots are declared unconditionally as siblings of this, at fixed bounds.
+    complicationSlotIds on the ListOption below is a second, independent thing
+    -- it tells the editor which slots are assignable per layout, but does not
+    itself hide drawing, which is why bulb_slot()'s own `gate` also exists.
+    """
+    return f"""<ListConfiguration id="layout">
+  <ListOption id="modular">
+{indent(bold_time_switch(TIME_Y, TIME_H, TIME_SIZE), 4)}
+  </ListOption>
+  <ListOption id="focus">
+{indent(bold_time_switch(FOCUS_TIME_Y, FOCUS_TIME_H, FOCUS_TIME_SIZE), 4)}
+  </ListOption>
+</ListConfiguration>"""
+
+
 def watchface_xml(diagnostic=False, cyr=False):
     options = "\n".join(
         f'      <ColorOption id="{i}" displayName="color_{cid}"'
         f' colors="{col} {NEUTRAL} {darken(col)}"/>'
         for i, (cid, col, _) in enumerate(COLORWAYS)
     )
-    slots = "\n".join([
+    scene = [
+        date_row(),
+        layout_switch(),
         bulb_slot(1, BULBS[0], "complication_left", STEPS_POLICY),
         bulb_slot(2, BULBS[1], "complication_center", BATTERY_POLICY),
         bulb_slot(3, BULBS[2], "complication_right", HEART_POLICY),
-        long_text_slot(4, diagnostic),
-    ])
+        long_text_slot(4, LT_X, LT_Y, LT_W, LT_H, LT_SIZE, diagnostic),
+    ]
     if cyr:
-        slots += "\n" + cyrillic_probe()
+        scene.append(cyrillic_probe())
+    scene_xml = "\n".join(scene)
     return f"""<?xml version="1.0" encoding="utf-8"?>
 <WatchFace width="{CANVAS}" height="{CANVAS}" clipShape="CIRCLE">
   <Metadata key="CLOCK_TYPE" value="DIGITAL"/>
@@ -541,11 +628,13 @@ def watchface_xml(diagnostic=False, cyr=False):
 {options}
     </ColorConfiguration>
     <BooleanConfiguration id="boldTime" displayName="bold_time_label" screenReaderText="bold_time_label" defaultValue="{BOLD_TIME_DEFAULT}"/>
+    <ListConfiguration id="layout" displayName="layout_label" screenReaderText="layout_label" defaultValue="modular">
+      <ListOption id="modular" displayName="layout_modular_label" complicationSlotIds="1,2,3,4"/>
+      <ListOption id="focus" displayName="layout_focus_label" complicationSlotIds="4"/>
+    </ListConfiguration>
   </UserConfigurations>
   <Scene backgroundColor="#ff000000">
-{indent(date_row(), 4)}
-{indent(bold_time_switch(), 4)}
-{indent(slots, 4)}
+{indent(scene_xml, 4)}
   </Scene>
 </WatchFace>
 """
@@ -556,6 +645,9 @@ def strings_xml():
         '  <string name="watch_face_name">Utility</string>',
         '  <string name="accent_label">Colour</string>',
         '  <string name="bold_time_label">Bold Time</string>',
+        '  <string name="layout_label">Layout</string>',
+        '  <string name="layout_modular_label">Modular</string>',
+        '  <string name="layout_focus_label">Focus</string>',
         '  <string name="complication_left">Left</string>',
         '  <string name="complication_center">Centre</string>',
         '  <string name="complication_right">Right</string>',

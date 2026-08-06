@@ -3,6 +3,9 @@
   <string name="watch_face_name">Utility</string>
   <string name="accent_label">Colour</string>
   <string name="bold_time_label">Bold Time</string>
+  <string name="layout_label">Layout</string>
+  <string name="layout_modular_label">Modular</string>
+  <string name="layout_focus_label">Focus</string>
   <string name="complication_left">Left</string>
   <string name="complication_center">Centre</string>
   <string name="complication_right">Right</string>
